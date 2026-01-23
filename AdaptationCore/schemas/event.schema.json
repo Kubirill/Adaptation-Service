@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptationEvent",
+  "type": "object",
+  "required": [
+    "session_id",
+    "scene_id",
+    "result_z",
+    "time_t",
+    "seed",
+    "config_version"
+  ],
+  "properties": {
+    "session_id": { "type": "string" },
+    "scene_id": { "type": "string" },
+    "result_z": { "type": "number" },
+    "time_t": { "type": "number" },
+    "attempts_a": { "type": "integer", "minimum": 0 },
+    "seed": { "type": "integer" },
+    "config_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

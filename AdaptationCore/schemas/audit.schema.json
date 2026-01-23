@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptationAuditLogLine",
+  "type": "object",
+  "required": [
+    "session_id",
+    "event",
+    "decision",
+    "timestamp_utc"
+  ],
+  "properties": {
+    "session_id": { "type": "string" },
+    "timestamp_utc": { "type": "string" },
+    "event": { "$ref": "event.schema.json" },
+    "decision": { "$ref": "decision.schema.json" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+{
+  "name": "com.example.adaptationcore",
+  "version": "0.1.0",
+  "displayName": "Adaptation Core",
+  "description": "Shared contracts and interfaces for adaptation experiments.",
+  "unity": "2022.3",
+  "author": {
+    "name": "Adaptation Service"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdaptationDecision",
+  "type": "object",
+  "required": [
+    "next_scene_id",
+    "npc_params",
+    "explanation",
+    "seed",
+    "config_version"
+  ],
+  "properties": {
+    "next_scene_id": { "type": "string" },
+    "npc_params": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "explanation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "seed": { "type": "integer" },
+    "config_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}
