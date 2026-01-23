@@ -44,7 +44,6 @@ for ($i = 0; $i -lt $Trials; $i++) {
     $args = @(
         "-batchmode",
         "-nographics",
-        "-quit",
         "-projectPath", $projectPath,
         "-executeMethod", "AdaptationUnity.Editor.BatchModeRunner.Run",
         "-adapter", $Arch,

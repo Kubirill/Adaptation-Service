@@ -19,6 +19,12 @@ namespace AdaptationUnity.Editor
                 EditorSceneManager.OpenScene(scenePath);
             }
 
+            var completionPath = ResolveCompletionPath(config);
+            if (!string.IsNullOrWhiteSpace(completionPath))
+            {
+                EditorPrefs.SetString(BatchModeCompletionWatcher.PrefKey, completionPath);
+            }
+
             EditorApplication.isPlaying = true;
         }
 
@@ -42,6 +48,16 @@ namespace AdaptationUnity.Editor
 
             Debug.LogWarning("No scene found for batch run.");
             return string.Empty;
+        }
+
+        private static string ResolveCompletionPath(RunConfig config)
+        {
+            if (string.IsNullOrWhiteSpace(config.OutputDirectory))
+            {
+                return string.Empty;
+            }
+
+            return Path.Combine(config.OutputDirectory, "run_complete.txt");
         }
     }
 }

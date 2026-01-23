@@ -54,7 +54,7 @@ def reproducibility_rate(audit_paths):
     for path in audit_paths:
         if not os.path.exists(path):
             continue
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, "r", encoding="utf-8-sig") as handle:
             for line in handle:
                 line = line.strip()
                 if not line:

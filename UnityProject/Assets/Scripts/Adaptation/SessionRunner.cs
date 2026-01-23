@@ -8,7 +8,7 @@ using AdaptationUnity.Adapters;
 using AdaptationUnity.Logging;
 using AdaptationUnity.Npc;
 using UnityEngine;
-using UnityEngine.Profiling;
+using Unity.Profiling;
 using UnityEngine.SceneManagement;
 
 namespace AdaptationUnity
@@ -26,6 +26,7 @@ namespace AdaptationUnity
         private SessionLogWriter _logWriter;
         private DummyNpcController _npcController;
         private RunConfig _config;
+        private string _outputDirectory;
 
         private int _sessionIndex;
         private int _frameIndex;
@@ -51,7 +52,8 @@ namespace AdaptationUnity
         {
             _adapter = AdapterFactory.Create(_config.AdapterName);
             _logWriter = new SessionLogWriter();
-            _logWriter.Initialize(ResolveOutputDirectory());
+            _outputDirectory = ResolveOutputDirectory();
+            _logWriter.Initialize(_outputDirectory);
             StartCoroutine(RunSessions());
         }
 
@@ -63,6 +65,7 @@ namespace AdaptationUnity
             }
 
             _logWriter.Dispose();
+            WriteCompletionMarker();
 
             if (Application.isBatchMode)
             {
@@ -184,6 +187,17 @@ namespace AdaptationUnity
             var outputDir = Path.Combine(repoRoot, "Experiments", "out", _config.AdapterName, timestamp);
             Directory.CreateDirectory(outputDir);
             return outputDir;
+        }
+
+        private void WriteCompletionMarker()
+        {
+            if (string.IsNullOrWhiteSpace(_outputDirectory))
+            {
+                return;
+            }
+
+            var markerPath = Path.Combine(_outputDirectory, "run_complete.txt");
+            File.WriteAllText(markerPath, "ok");
         }
     }
 }
