@@ -1,7 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using AdaptationCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -20,7 +27,7 @@ var auditWriter = new ServiceAuditWriter(settings.AuditRoot);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapPost("/computeNext", (ComputeNextRequest request) =>
+app.MapPost("/computeNext", (ComputeNextRequest request, HttpResponse response) =>
 {
     var sessionEvent = request.ToEvent();
     if (string.IsNullOrWhiteSpace(sessionEvent.config_version))
@@ -31,14 +38,11 @@ app.MapPost("/computeNext", (ComputeNextRequest request) =>
     var result = AdaptationEngine.ComputeNext(sessionEvent, config);
     auditWriter.Append(sessionEvent.session_id, result.Audit);
 
-    var headers = new Dictionary<string, string>
-    {
-        { "X-Config-Hash", result.Audit.config_version_hash ?? string.Empty },
-        { "X-Config-Version", sessionEvent.config_version ?? string.Empty },
-        { "X-Intermediate", ServiceAuditWriter.FlattenIntermediates(result.Audit) }
-    };
+    response.Headers["X-Config-Hash"] = result.Audit.config_version_hash ?? string.Empty;
+    response.Headers["X-Config-Version"] = sessionEvent.config_version ?? string.Empty;
+    response.Headers["X-Intermediate"] = ServiceAuditWriter.FlattenIntermediates(result.Audit);
 
-    return Results.Json(result.Decision, headers: headers);
+    return Results.Json(result.Decision);
 });
 
 app.Run(settings.Urls);

@@ -3,8 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
+    <BaseOutputPath>..\\Artifacts\\AdaptationCore\\bin\\</BaseOutputPath>
+    <BaseIntermediateOutputPath>..\\Artifacts\\AdaptationCore\\obj\\</BaseIntermediateOutputPath>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="Runtime\\**\\*.cs" />
-  </ItemGroup>
 </Project>

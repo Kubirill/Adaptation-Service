@@ -65,6 +65,11 @@ for ($i = 0; $i -lt $Trials; $i++) {
     for ($h = 0; $h -lt 30; $h++) {
         if ($serviceProc.HasExited) {
             Write-Host "Service exited before becoming ready. Exit code: $($serviceProc.ExitCode)"
+            Write-Host "Service failed during startup; check service.out.log for build errors."
+            if (Test-Path $serviceOutLog) {
+                Write-Host "Last 50 stdout lines:"
+                Get-Content -Path $serviceOutLog -Tail 50 | ForEach-Object { Write-Host $_ }
+            }
             if (Test-Path $serviceErrLog) {
                 Write-Host "Last 50 stderr lines:"
                 Get-Content -Path $serviceErrLog -Tail 50 | ForEach-Object { Write-Host $_ }
