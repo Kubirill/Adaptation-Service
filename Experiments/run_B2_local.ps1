@@ -49,12 +49,22 @@ for ($i = 0; $i -lt $Trials; $i++) {
         "--urls", $ServiceUrl
     )
 
+    $serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs | ForEach-Object { if ($_ -match "\s") { '"' + $_ + '"' } else { $_ } }) -join ' '
     Write-Host "Starting service for trial $i"
+    Write-Host "Service command: $serviceCmd"
     $serviceProc = Start-Process -FilePath $dotnet -ArgumentList $serviceArgs -PassThru -RedirectStandardOutput $serviceOutLog -RedirectStandardError $serviceErrLog
 
     $healthUrl = $ServiceUrl.TrimEnd('/') + "/health"
     $ready = $false
     for ($h = 0; $h -lt 30; $h++) {
+        if ($serviceProc.HasExited) {
+            Write-Host "Service exited before becoming ready. Exit code: $($serviceProc.ExitCode)"
+            if (Test-Path $serviceErrLog) {
+                Write-Host "Last 50 stderr lines:"
+                Get-Content -Path $serviceErrLog -Tail 50 | ForEach-Object { Write-Host $_ }
+            }
+            break
+        }
         try {
             $response = Invoke-WebRequest -UseBasicParsing -Uri $healthUrl -TimeoutSec 2
             if ($response.StatusCode -eq 200) {
@@ -67,11 +77,19 @@ for ($i = 0; $i -lt $Trials; $i++) {
     }
 
     if (-not $ready) {
-        Stop-Process -Id $serviceProc.Id -Force
+        if ($serviceProc -and -not $serviceProc.HasExited) {
+            Stop-Process -Id $serviceProc.Id -Force
+        } else {
+            Write-Host "Service already exited; skipping Stop-Process"
+        }
         throw "Service did not become ready at $healthUrl"
     }
 
     & "$PSScriptRoot\run_common.ps1" -Arch "B2" -Trials 1 -Sessions $Sessions -Seed ($Seed + $i) -UnityPath $unityPath -ServiceUrl $ServiceUrl -ServiceTimeoutMs $ServiceTimeoutMs -ServiceRetries $ServiceRetries -ServiceRetryDelayMs $ServiceRetryDelayMs -ProfileId $ProfileId | Out-Null
 
-    Stop-Process -Id $serviceProc.Id -Force
+    if ($serviceProc -and -not $serviceProc.HasExited) {
+        Stop-Process -Id $serviceProc.Id -Force
+    } else {
+        Write-Host "Service already exited; skipping Stop-Process"
+    }
 }

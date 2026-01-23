@@ -2,7 +2,7 @@ param(
     [string]$ConfigVersion = "v1",
     [string]$ConfigRoot = "",
     [string]$AuditRoot = "",
-    [string]$Urls = "http://localhost:5000",
+    [string]$ServiceUrl = "http://localhost:5000",
     [string]$LogDir = "",
     [string]$DotNetPath = $env:DOTNET_PATH
 )
@@ -14,16 +14,16 @@ if (-not $ConfigRoot) {
     $ConfigRoot = Join-Path $repoRoot "Configs"
 }
 
+if (-not $LogDir) {
+    $LogDir = Join-Path $repoRoot ("Experiments\out\check_service\{0}" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
+}
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+
 if ($AuditRoot) {
     New-Item -ItemType Directory -Force -Path $AuditRoot | Out-Null
 }
 
 $serviceProject = Join-Path $repoRoot "Service\Service.csproj"
-if (-not $LogDir) {
-    $LogDir = Join-Path $repoRoot ("Experiments\out\service\{0}" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
-}
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
- 
 $serviceOutLog = Join-Path $LogDir "service.out.log"
 $serviceErrLog = Join-Path $LogDir "service.err.log"
 
@@ -31,7 +31,7 @@ Write-Host "Service project: $serviceProject"
 Write-Host "Config root: $ConfigRoot"
 Write-Host "Config version: $ConfigVersion"
 Write-Host "Audit root: $AuditRoot"
-Write-Host "Urls: $Urls"
+Write-Host "Service URL: $ServiceUrl"
 Write-Host "Log dir: $LogDir"
 
 $dotnet = $DotNetPath
@@ -52,7 +52,7 @@ $serviceArgs = @(
     "--ConfigRoot", $ConfigRoot,
     "--ConfigVersion", $ConfigVersion,
     "--AuditRoot", $AuditRoot,
-    "--urls", $Urls
+    "--urls", $ServiceUrl
 )
 
 $serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs | ForEach-Object { if ($_ -match "\s") { '"' + $_ + '"' } else { $_ } }) -join ' '
@@ -60,7 +60,7 @@ Write-Host "Service command: $serviceCmd"
 
 $serviceProc = Start-Process -FilePath $dotnet -ArgumentList $serviceArgs -PassThru -RedirectStandardOutput $serviceOutLog -RedirectStandardError $serviceErrLog
 
-$healthUrl = $Urls.TrimEnd('/') + "/health"
+$healthUrl = $ServiceUrl.TrimEnd('/') + "/health"
 $ready = $false
 for ($h = 0; $h -lt 30; $h++) {
     if ($serviceProc.HasExited) {
@@ -91,4 +91,15 @@ if (-not $ready) {
     throw "Service did not become ready at $healthUrl"
 }
 
-Write-Host "Service ready. PID: $($serviceProc.Id)"
+$healthResponse = Invoke-WebRequest -UseBasicParsing -Uri $healthUrl -TimeoutSec 5
+Write-Host "Health status: $($healthResponse.StatusCode) $($healthResponse.Content)"
+
+if ($serviceProc -and -not $serviceProc.HasExited) {
+    Stop-Process -Id $serviceProc.Id
+    $serviceProc.WaitForExit(5000) | Out-Null
+    if (-not $serviceProc.HasExited) {
+        Stop-Process -Id $serviceProc.Id -Force
+    }
+} else {
+    Write-Host "Service already exited; skipping Stop-Process"
+}
