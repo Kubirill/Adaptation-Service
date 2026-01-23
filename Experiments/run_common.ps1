@@ -3,7 +3,12 @@ param(
     [int]$Trials = 3,
     [int]$Sessions = 10,
     [int]$Seed = 1234,
-    [string]$UnityPath = $env:UNITY_PATH
+    [string]$UnityPath = $env:UNITY_PATH,
+    [string]$ServiceUrl = "",
+    [int]$ServiceTimeoutMs = 3000,
+    [int]$ServiceRetries = 2,
+    [int]$ServiceRetryDelayMs = 250,
+    [string]$ProfileId = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,6 +56,15 @@ for ($i = 0; $i -lt $Trials; $i++) {
         "-seed", ($Seed + $i),
         "-outDir", $trialDir
     )
+    if ($ServiceUrl) {
+        $args += @("-serviceUrl", $ServiceUrl)
+        $args += @("-serviceTimeoutMs", $ServiceTimeoutMs)
+        $args += @("-serviceRetries", $ServiceRetries)
+        $args += @("-serviceRetryDelayMs", $ServiceRetryDelayMs)
+        if ($ProfileId) {
+            $args += @("-profileId", $ProfileId)
+        }
+    }
 
     Write-Host "Trial $i -> $trialDir"
     & $unity @args | Tee-Object -FilePath (Join-Path $trialDir "unity.log")

@@ -12,6 +12,7 @@ namespace AdaptationUnity.Logging
         private StreamWriter _adapterWriter;
         private StreamWriter _sceneWriter;
         private StreamWriter _auditWriter;
+        private StreamWriter _serviceErrorWriter;
 
         public void Initialize(string outputDir)
         {
@@ -20,6 +21,7 @@ namespace AdaptationUnity.Logging
             _frameWriter = CreateWriter(Path.Combine(outputDir, "frame_times.csv"), "session_id,frame_index,delta_ms");
             _adapterWriter = CreateWriter(Path.Combine(outputDir, "adapter_calls.csv"), "session_id,adapter,call_ms");
             _sceneWriter = CreateWriter(Path.Combine(outputDir, "scene_transitions.csv"), "session_id,from_scene,to_scene,transition_ms");
+            _serviceErrorWriter = CreateWriter(Path.Combine(outputDir, "service_errors.csv"), "session_id,attempt,error,call_ms");
             _auditWriter = new StreamWriter(Path.Combine(outputDir, "audit.jsonl"), false, Encoding.UTF8)
             {
                 AutoFlush = true
@@ -57,6 +59,16 @@ namespace AdaptationUnity.Logging
             _sceneWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3:0.000}", sessionId, fromScene, toScene, durationMs));
         }
 
+        public void LogServiceError(string sessionId, int attempt, string error, double durationMs)
+        {
+            if (_serviceErrorWriter == null)
+            {
+                return;
+            }
+
+            _serviceErrorWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},\"{2}\",{3:0.000}", sessionId, attempt, Escape(error), durationMs));
+        }
+
         public void LogAudit(string sessionId, AdaptationEvent sessionEvent, AdaptationDecision decision, AdaptationAuditRecord auditRecord)
         {
             if (_auditWriter == null)
@@ -81,6 +93,7 @@ namespace AdaptationUnity.Logging
             _frameWriter?.Dispose();
             _adapterWriter?.Dispose();
             _sceneWriter?.Dispose();
+            _serviceErrorWriter?.Dispose();
             _auditWriter?.Dispose();
         }
 

@@ -50,10 +50,10 @@ namespace AdaptationUnity
 
         private void Start()
         {
-            _adapter = AdapterFactory.Create(_config.AdapterName);
             _logWriter = new SessionLogWriter();
             _outputDirectory = ResolveOutputDirectory();
             _logWriter.Initialize(_outputDirectory);
+            _adapter = AdapterFactory.Create(_config.AdapterName, _logWriter);
             StartCoroutine(RunSessions());
         }
 

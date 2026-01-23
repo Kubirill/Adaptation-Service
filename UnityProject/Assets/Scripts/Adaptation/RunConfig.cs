@@ -17,6 +17,11 @@ namespace AdaptationUnity
         public int MaxFrames = 300;
         public int Attempts = 1;
         public List<string> SceneSequence = new List<string>();
+        public string ServiceUrl = "http://localhost:5000";
+        public int ServiceTimeoutMs = 3000;
+        public int ServiceRetries = 2;
+        public int ServiceRetryDelayMs = 250;
+        public string ProfileId = string.Empty;
 
         public static void ApplyFromArgs(string[] args)
         {
@@ -59,6 +64,26 @@ namespace AdaptationUnity
                 else if (arg.Equals("-scenes", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {
                     cfg.SceneSequence = new List<string>(args[++i].Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
+                }
+                else if (arg.Equals("-serviceUrl", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ServiceUrl = args[++i];
+                }
+                else if (arg.Equals("-serviceTimeoutMs", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ServiceTimeoutMs = ParseInt(args[++i], cfg.ServiceTimeoutMs);
+                }
+                else if (arg.Equals("-serviceRetries", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ServiceRetries = ParseInt(args[++i], cfg.ServiceRetries);
+                }
+                else if (arg.Equals("-serviceRetryDelayMs", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ServiceRetryDelayMs = ParseInt(args[++i], cfg.ServiceRetryDelayMs);
+                }
+                else if (arg.Equals("-profileId", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ProfileId = args[++i];
                 }
             }
 
