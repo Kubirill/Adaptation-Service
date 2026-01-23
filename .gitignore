@@ -42,3 +42,6 @@ Assets/AddressableAssetsData/*/*.bin*
 
 # Cache
 *.bak
+
+# Experiment outputs
+Experiments/out/
