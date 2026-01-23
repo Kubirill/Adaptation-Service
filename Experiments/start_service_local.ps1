@@ -9,6 +9,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Quote-Arg {
+    param([string]$Arg)
+    if ($Arg -match "\s") { return '"' + $Arg + '"' }
+    return $Arg
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 if (-not $ConfigRoot) {
     $ConfigRoot = Join-Path $repoRoot "Configs"
@@ -47,15 +53,17 @@ if (-not $dotnet) {
 
 $serviceArgs = @(
     "run",
-    "--project", $serviceProject,
+    "--project", (Quote-Arg $serviceProject),
     "--",
-    "--ConfigRoot", $ConfigRoot,
-    "--ConfigVersion", $ConfigVersion,
-    "--AuditRoot", $AuditRoot,
-    "--urls", $Urls
+    "--ConfigRoot", (Quote-Arg $ConfigRoot),
+    "--ConfigVersion", $ConfigVersion
 )
+if ($AuditRoot) {
+    $serviceArgs += @("--AuditRoot", (Quote-Arg $AuditRoot))
+}
+$serviceArgs += @("--urls", $Urls)
 
-$serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs | ForEach-Object { if ($_ -match "\s") { '"' + $_ + '"' } else { $_ } }) -join ' '
+$serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs -join ' ')
 Write-Host "Service command: $serviceCmd"
 
 $serviceProc = Start-Process -FilePath $dotnet -ArgumentList $serviceArgs -PassThru -RedirectStandardOutput $serviceOutLog -RedirectStandardError $serviceErrLog

@@ -12,6 +12,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Quote-Arg {
+    param([string]$Arg)
+    if ($Arg -match "\s") { return '"' + $Arg + '"' }
+    return $Arg
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $unityPath = $env:UNITY_PATH
 $timestamp = (Get-Date -Format "yyyyMMdd_HHmmss")
@@ -41,15 +47,15 @@ for ($i = 0; $i -lt $Trials; $i++) {
 
     $serviceArgs = @(
         "run",
-        "--project", $serviceProject,
+        "--project", (Quote-Arg $serviceProject),
         "--",
-        "--ConfigRoot", $configRoot,
+        "--ConfigRoot", (Quote-Arg $configRoot),
         "--ConfigVersion", "v1",
-        "--AuditRoot", $trialDir,
+        "--AuditRoot", (Quote-Arg $trialDir),
         "--urls", $ServiceUrl
     )
 
-    $serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs | ForEach-Object { if ($_ -match "\s") { '"' + $_ + '"' } else { $_ } }) -join ' '
+    $serviceCmd = '"' + $dotnet + '" ' + ($serviceArgs -join ' ')
     Write-Host "Starting service for trial $i"
     Write-Host "Service command: $serviceCmd"
     $serviceProc = Start-Process -FilePath $dotnet -ArgumentList $serviceArgs -PassThru -RedirectStandardOutput $serviceOutLog -RedirectStandardError $serviceErrLog
