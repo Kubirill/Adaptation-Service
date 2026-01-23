@@ -29,6 +29,7 @@ namespace AdaptationUnity
         private string _outputDirectory;
 
         private int _sessionIndex;
+        private bool _isWarmup;
         private int _frameIndex;
         private float _sessionStart;
         private string _currentSessionId;
@@ -59,8 +60,10 @@ namespace AdaptationUnity
 
         private IEnumerator RunSessions()
         {
-            for (_sessionIndex = 0; _sessionIndex < _config.Sessions; _sessionIndex++)
+            var totalSessions = Mathf.Max(0, _config.WarmupSessions) + Mathf.Max(0, _config.Sessions);
+            for (_sessionIndex = 0; _sessionIndex < totalSessions; _sessionIndex++)
             {
+                _isWarmup = _sessionIndex < _config.WarmupSessions;
                 yield return StartCoroutine(RunSingleSession(_sessionIndex));
             }
 
@@ -85,7 +88,7 @@ namespace AdaptationUnity
 
             while (Time.realtimeSinceStartup - _sessionStart < _config.SessionDurationSeconds && _frameIndex < _config.MaxFrames)
             {
-                _logWriter.LogFrameTime(_currentSessionId, _frameIndex, Time.deltaTime);
+                _logWriter.LogFrameTime(_currentSessionId, index, _frameIndex, _isWarmup, Time.deltaTime);
                 _frameIndex++;
                 yield return null;
             }
@@ -110,6 +113,11 @@ namespace AdaptationUnity
             var adapterTimer = Stopwatch.StartNew();
             using (AdapterCallMarker.Auto())
             {
+                if (_adapter is IAdapterSessionContext adapterContext)
+                {
+                    adapterContext.SetSessionContext(_currentSessionId, index, _isWarmup);
+                }
+
                 if (_adapter is IAdaptationAdapterWithAudit adapterWithAudit)
                 {
                     decision = adapterWithAudit.ComputeNext(sessionEvent, out auditRecord);
@@ -120,7 +128,7 @@ namespace AdaptationUnity
                 }
             }
             adapterTimer.Stop();
-            _logWriter.LogAdapterCall(_currentSessionId, _adapter.AdapterName, adapterTimer.Elapsed.TotalMilliseconds);
+            _logWriter.LogAdapterCall(_currentSessionId, index, _isWarmup, _adapter.AdapterName, adapterTimer.Elapsed.TotalMilliseconds);
 
             using (ApplyDecisionMarker.Auto())
             {
@@ -128,7 +136,7 @@ namespace AdaptationUnity
                 _npcController.ApplyParams(decision.npc_params);
             }
 
-            _logWriter.LogAudit(_currentSessionId, sessionEvent, decision, auditRecord);
+            _logWriter.LogAudit(_currentSessionId, index, _isWarmup, sessionEvent, decision, auditRecord);
 
             var nextScene = ResolveNextScene(decision.next_scene_id);
             var transitionTimer = Stopwatch.StartNew();
@@ -141,7 +149,7 @@ namespace AdaptationUnity
                 }
             }
             transitionTimer.Stop();
-            _logWriter.LogSceneTransition(_currentSessionId, sceneName, nextScene, transitionTimer.Elapsed.TotalMilliseconds);
+            _logWriter.LogSceneTransition(_currentSessionId, index, _isWarmup, sceneName, nextScene, transitionTimer.Elapsed.TotalMilliseconds);
         }
 
         private void EnsureNpc()

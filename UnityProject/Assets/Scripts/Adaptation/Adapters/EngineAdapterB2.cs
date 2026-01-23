@@ -3,7 +3,7 @@ using AdaptationUnity.Logging;
 
 namespace AdaptationUnity.Adapters
 {
-    public sealed class EngineAdapterB2 : IAdaptationAdapterWithAudit, IAdapterWithLogger
+    public sealed class EngineAdapterB2 : IAdaptationAdapterWithAudit, IAdapterWithLogger, IAdapterSessionContext
     {
         public string AdapterName => "B2";
 
@@ -27,6 +27,11 @@ namespace AdaptationUnity.Adapters
         public AdaptationDecision ComputeNext(AdaptationEvent sessionEvent, out AdaptationAuditRecord auditRecord)
         {
             return _client.ComputeNext(sessionEvent, out auditRecord);
+        }
+
+        public void SetSessionContext(string sessionId, int sessionIndex, bool warmup)
+        {
+            _client.SetSessionContext(sessionId, sessionIndex, warmup);
         }
     }
 }

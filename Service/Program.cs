@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -27,7 +28,7 @@ var auditWriter = new ServiceAuditWriter(settings.AuditRoot);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapPost("/computeNext", (ComputeNextRequest request, HttpResponse response) =>
+app.MapPost("/computeNext", (ComputeNextRequest request, HttpRequest httpRequest, HttpResponse response) =>
 {
     var sessionEvent = request.ToEvent();
     if (string.IsNullOrWhiteSpace(sessionEvent.config_version))
@@ -35,14 +36,34 @@ app.MapPost("/computeNext", (ComputeNextRequest request, HttpResponse response) 
         sessionEvent.config_version = config.version;
     }
 
-    var result = AdaptationEngine.ComputeNext(sessionEvent, config);
-    auditWriter.Append(sessionEvent.session_id, result.Audit);
+    var correlationId = httpRequest.Headers["X-Correlation-Id"].ToString();
+    if (string.IsNullOrWhiteSpace(correlationId))
+    {
+        correlationId = Guid.NewGuid().ToString("N");
+    }
 
-    response.Headers["X-Config-Hash"] = result.Audit.config_version_hash ?? string.Empty;
-    response.Headers["X-Config-Version"] = sessionEvent.config_version ?? string.Empty;
-    response.Headers["X-Intermediate"] = ServiceAuditWriter.FlattenIntermediates(result.Audit);
+    var computeTimer = Stopwatch.StartNew();
+    try
+    {
+        var result = AdaptationEngine.ComputeNext(sessionEvent, config);
+        computeTimer.Stop();
+        auditWriter.Append(sessionEvent.session_id, result.Audit);
 
-    return Results.Json(result.Decision);
+        response.Headers["X-Config-Hash"] = result.Audit.config_version_hash ?? string.Empty;
+        response.Headers["X-Config-Version"] = sessionEvent.config_version ?? string.Empty;
+        response.Headers["X-Intermediate"] = ServiceAuditWriter.FlattenIntermediates(result.Audit);
+        response.Headers["X-Server-Compute-Ms"] = computeTimer.Elapsed.TotalMilliseconds.ToString("0.000", CultureInfo.InvariantCulture);
+        response.Headers["X-Correlation-Id"] = correlationId;
+
+        return Results.Json(result.Decision);
+    }
+    catch (Exception ex)
+    {
+        computeTimer.Stop();
+        response.Headers["X-Server-Compute-Ms"] = computeTimer.Elapsed.TotalMilliseconds.ToString("0.000", CultureInfo.InvariantCulture);
+        response.Headers["X-Correlation-Id"] = correlationId;
+        return Results.Problem(detail: ex.Message);
+    }
 });
 
 app.Run(settings.Urls);

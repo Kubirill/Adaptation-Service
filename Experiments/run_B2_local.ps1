@@ -1,6 +1,7 @@
 param(
     [int]$Trials = 3,
     [int]$Sessions = 10,
+    [int]$WarmupSessions = 5,
     [int]$Seed = 1234,
     [string]$ServiceUrl = "http://localhost:5000",
     [int]$ServiceTimeoutMs = 3000,
@@ -96,7 +97,7 @@ for ($i = 0; $i -lt $Trials; $i++) {
         throw "Service did not become ready at $healthUrl"
     }
 
-    & "$PSScriptRoot\run_common.ps1" -Arch "B2" -Trials 1 -Sessions $Sessions -Seed ($Seed + $i) -UnityPath $unityPath -ServiceUrl $ServiceUrl -ServiceTimeoutMs $ServiceTimeoutMs -ServiceRetries $ServiceRetries -ServiceRetryDelayMs $ServiceRetryDelayMs -ProfileId $ProfileId | Out-Null
+    & "$PSScriptRoot\run_common.ps1" -Arch "B2" -Trials 1 -Sessions $Sessions -WarmupSessions $WarmupSessions -Seed ($Seed + $i) -UnityPath $unityPath -ServiceUrl $ServiceUrl -ServiceTimeoutMs $ServiceTimeoutMs -ServiceRetries $ServiceRetries -ServiceRetryDelayMs $ServiceRetryDelayMs -ProfileId $ProfileId | Out-Null
 
     if ($serviceProc -and -not $serviceProc.HasExited) {
         Stop-Process -Id $serviceProc.Id -Force

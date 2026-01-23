@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Arch,
     [int]$Trials = 3,
     [int]$Sessions = 10,
+    [int]$WarmupSessions = 5,
     [int]$Seed = 1234,
     [string]$UnityPath = $env:UNITY_PATH,
     [string]$ServiceUrl = "",
@@ -53,6 +54,7 @@ for ($i = 0; $i -lt $Trials; $i++) {
         "-executeMethod", "AdaptationUnity.Editor.BatchModeRunner.Run",
         "-adapter", $Arch,
         "-sessions", $Sessions,
+        "-warmupSessions", $WarmupSessions,
         "-seed", ($Seed + $i),
         "-outDir", $trialDir
     )

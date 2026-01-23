@@ -10,6 +10,7 @@ namespace AdaptationUnity
 
         public string AdapterName = "Baseline";
         public int Sessions = 5;
+        public int WarmupSessions = 5;
         public int Seed = 1234;
         public string ConfigVersion = "v1";
         public string OutputDirectory = string.Empty;
@@ -36,6 +37,10 @@ namespace AdaptationUnity
                 else if (arg.Equals("-sessions", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {
                     cfg.Sessions = ParseInt(args[++i], cfg.Sessions);
+                }
+                else if ((arg.Equals("-warmupSessions", StringComparison.OrdinalIgnoreCase) || arg.Equals("-warmup", StringComparison.OrdinalIgnoreCase)) && i + 1 < args.Length)
+                {
+                    cfg.WarmupSessions = ParseInt(args[++i], cfg.WarmupSessions);
                 }
                 else if (arg.Equals("-seed", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {

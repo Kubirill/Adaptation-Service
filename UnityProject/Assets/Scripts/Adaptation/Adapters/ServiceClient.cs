@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -11,17 +12,18 @@ namespace AdaptationUnity.Adapters
 {
     public sealed class ServiceClient
     {
+        private static readonly HttpClient SharedClient = CreateSharedClient();
         private readonly HttpClient _httpClient;
         private readonly RunConfig _config;
         private SessionLogWriter _logWriter;
+        private string _sessionId = string.Empty;
+        private int _sessionIndex;
+        private bool _warmup;
 
         public ServiceClient(RunConfig config)
         {
             _config = config;
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromMilliseconds(Math.Max(100, _config.ServiceTimeoutMs))
-            };
+            _httpClient = SharedClient;
         }
 
         public void SetLogger(SessionLogWriter logWriter)
@@ -29,39 +31,119 @@ namespace AdaptationUnity.Adapters
             _logWriter = logWriter;
         }
 
+        public void SetSessionContext(string sessionId, int sessionIndex, bool warmup)
+        {
+            _sessionId = sessionId ?? string.Empty;
+            _sessionIndex = sessionIndex;
+            _warmup = warmup;
+        }
+
         public AdaptationDecision ComputeNext(AdaptationEvent sessionEvent, out AdaptationAuditRecord auditRecord)
         {
             auditRecord = null;
             var url = _config.ServiceUrl?.TrimEnd('/') + "/computeNext";
 
+            var correlationId = Guid.NewGuid().ToString("N");
+            var serializeTimer = Stopwatch.StartNew();
             var payload = BuildPayload(sessionEvent, _config.ProfileId);
+            serializeTimer.Stop();
+
+            var totalTimer = Stopwatch.StartNew();
+            var httpMs = 0.0;
+            var deserializeMs = 0.0;
+            var serverMs = 0.0;
+            var retriesCount = 0;
+            var timeoutFlag = false;
+            var httpStatus = 0;
+            var errorCode = string.Empty;
+
             var attempts = Math.Max(1, _config.ServiceRetries + 1);
             Exception lastError = null;
             for (var attempt = 1; attempt <= attempts; attempt++)
             {
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
+                using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+                request.Headers.Add("X-Correlation-Id", correlationId);
+
                 var timer = Stopwatch.StartNew();
                 try
                 {
-                    using var response = _httpClient.PostAsync(url, content).GetAwaiter().GetResult();
+                    using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(100, _config.ServiceTimeoutMs)));
+                    using var response = _httpClient.SendAsync(request, cts.Token).GetAwaiter().GetResult();
                     var body = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                    response.EnsureSuccessStatusCode();
+                    timer.Stop();
+                    httpMs = timer.Elapsed.TotalMilliseconds;
+                    httpStatus = (int)response.StatusCode;
+                    serverMs = ParseServerMs(response);
 
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        errorCode = "HTTP_" + httpStatus.ToString(CultureInfo.InvariantCulture);
+                        throw new HttpRequestException("Service returned status " + httpStatus.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    var deserializeTimer = Stopwatch.StartNew();
+                    var decision = JsonUtility.FromJson<AdaptationDecision>(body);
+                    deserializeTimer.Stop();
+                    deserializeMs = deserializeTimer.Elapsed.TotalMilliseconds;
                     auditRecord = BuildAudit(sessionEvent, response);
-                    return JsonUtility.FromJson<AdaptationDecision>(body);
+
+                    retriesCount = attempt - 1;
+                    totalTimer.Stop();
+                    _logWriter?.LogB2Breakdown(
+                        _sessionIndex,
+                        _warmup,
+                        correlationId,
+                        serializeTimer.Elapsed.TotalMilliseconds,
+                        httpMs,
+                        serverMs,
+                        deserializeMs,
+                        totalTimer.Elapsed.TotalMilliseconds,
+                        retriesCount,
+                        timeoutFlag,
+                        httpStatus,
+                        errorCode
+                    );
+                    return decision;
                 }
                 catch (Exception ex)
                 {
                     timer.Stop();
                     lastError = ex;
-                    _logWriter?.LogServiceError(sessionEvent.session_id, attempt, ex.Message, timer.Elapsed.TotalMilliseconds);
+                    httpMs = timer.Elapsed.TotalMilliseconds;
+                    if (ex is OperationCanceledException)
+                    {
+                        timeoutFlag = true;
+                        errorCode = "Timeout";
+                    }
+                    else
+                    {
+                        errorCode = ex.GetType().Name;
+                    }
+                    _logWriter?.LogServiceError(sessionEvent.session_id, _sessionIndex, _warmup, attempt, ex.Message, timer.Elapsed.TotalMilliseconds);
                     if (attempt < attempts)
                     {
                         Thread.Sleep(Math.Max(0, _config.ServiceRetryDelayMs));
                     }
+                    retriesCount = attempt - 1;
                 }
             }
 
+            totalTimer.Stop();
+            _logWriter?.LogB2Breakdown(
+                _sessionIndex,
+                _warmup,
+                correlationId,
+                serializeTimer.Elapsed.TotalMilliseconds,
+                httpMs,
+                serverMs,
+                deserializeMs,
+                totalTimer.Elapsed.TotalMilliseconds,
+                Math.Max(0, retriesCount),
+                timeoutFlag,
+                httpStatus,
+                errorCode
+            );
             throw lastError ?? new Exception("Service call failed.");
         }
 
@@ -98,6 +180,25 @@ namespace AdaptationUnity.Adapters
             }
 
             return audit;
+        }
+
+        private static double ParseServerMs(HttpResponseMessage response)
+        {
+            var header = GetHeader(response, "X-Server-Compute-Ms");
+            if (double.TryParse(header, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            {
+                return value;
+            }
+            return 0.0;
+        }
+
+        private static HttpClient CreateSharedClient()
+        {
+            var client = new HttpClient
+            {
+                Timeout = Timeout.InfiniteTimeSpan
+            };
+            return client;
         }
 
         private static string GetHeader(HttpResponseMessage response, string name)

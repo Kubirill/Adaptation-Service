@@ -13,22 +13,30 @@ namespace AdaptationUnity.Logging
         private StreamWriter _sceneWriter;
         private StreamWriter _auditWriter;
         private StreamWriter _serviceErrorWriter;
+        private StreamWriter _b2BreakdownWriter;
+        private readonly object _b2BreakdownLock = new object();
+        private string _trialId = string.Empty;
 
         public void Initialize(string outputDir)
         {
             Directory.CreateDirectory(outputDir);
 
-            _frameWriter = CreateWriter(Path.Combine(outputDir, "frame_times.csv"), "session_id,frame_index,delta_ms");
-            _adapterWriter = CreateWriter(Path.Combine(outputDir, "adapter_calls.csv"), "session_id,adapter,call_ms");
-            _sceneWriter = CreateWriter(Path.Combine(outputDir, "scene_transitions.csv"), "session_id,from_scene,to_scene,transition_ms");
-            _serviceErrorWriter = CreateWriter(Path.Combine(outputDir, "service_errors.csv"), "session_id,attempt,error,call_ms");
+            _trialId = new DirectoryInfo(outputDir).Name;
+            _frameWriter = CreateWriter(Path.Combine(outputDir, "frame_times.csv"), "session_id,session_index,frame_index,warmup,delta_ms");
+            _adapterWriter = CreateWriter(Path.Combine(outputDir, "adapter_calls.csv"), "session_id,session_index,warmup,adapter,call_ms");
+            _sceneWriter = CreateWriter(Path.Combine(outputDir, "scene_transitions.csv"), "session_id,session_index,warmup,from_scene,to_scene,transition_ms");
+            _serviceErrorWriter = CreateWriter(Path.Combine(outputDir, "service_errors.csv"), "session_id,session_index,warmup,attempt,error,call_ms");
+            _b2BreakdownWriter = CreateWriter(
+                Path.Combine(outputDir, "b2_breakdown.csv"),
+                "trial_id,session_index,warmup,correlation_id,t_client_serialize_ms,t_http_rtt_ms,t_server_compute_ms,t_client_deserialize_ms,t_total_client_ms,retries_count,timeout_flag,http_status,error_code"
+            );
             _auditWriter = new StreamWriter(Path.Combine(outputDir, "audit.jsonl"), false, Encoding.UTF8)
             {
                 AutoFlush = true
             };
         }
 
-        public void LogFrameTime(string sessionId, int frameIndex, float deltaSeconds)
+        public void LogFrameTime(string sessionId, int sessionIndex, int frameIndex, bool warmup, float deltaSeconds)
         {
             if (_frameWriter == null)
             {
@@ -36,40 +44,40 @@ namespace AdaptationUnity.Logging
             }
 
             var deltaMs = deltaSeconds * 1000f;
-            _frameWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2:0.000}", sessionId, frameIndex, deltaMs));
+            _frameWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4:0.000}", sessionId, sessionIndex, frameIndex, warmup ? 1 : 0, deltaMs));
         }
 
-        public void LogAdapterCall(string sessionId, string adapterName, double durationMs)
+        public void LogAdapterCall(string sessionId, int sessionIndex, bool warmup, string adapterName, double durationMs)
         {
             if (_adapterWriter == null)
             {
                 return;
             }
 
-            _adapterWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2:0.000}", sessionId, adapterName, durationMs));
+            _adapterWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4:0.000}", sessionId, sessionIndex, warmup ? 1 : 0, adapterName, durationMs));
         }
 
-        public void LogSceneTransition(string sessionId, string fromScene, string toScene, double durationMs)
+        public void LogSceneTransition(string sessionId, int sessionIndex, bool warmup, string fromScene, string toScene, double durationMs)
         {
             if (_sceneWriter == null)
             {
                 return;
             }
 
-            _sceneWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3:0.000}", sessionId, fromScene, toScene, durationMs));
+            _sceneWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4},{5:0.000}", sessionId, sessionIndex, warmup ? 1 : 0, fromScene, toScene, durationMs));
         }
 
-        public void LogServiceError(string sessionId, int attempt, string error, double durationMs)
+        public void LogServiceError(string sessionId, int sessionIndex, bool warmup, int attempt, string error, double durationMs)
         {
             if (_serviceErrorWriter == null)
             {
                 return;
             }
 
-            _serviceErrorWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},\"{2}\",{3:0.000}", sessionId, attempt, Escape(error), durationMs));
+            _serviceErrorWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},\"{4}\",{5:0.000}", sessionId, sessionIndex, warmup ? 1 : 0, attempt, Escape(error), durationMs));
         }
 
-        public void LogAudit(string sessionId, AdaptationEvent sessionEvent, AdaptationDecision decision, AdaptationAuditRecord auditRecord)
+        public void LogAudit(string sessionId, int sessionIndex, bool warmup, AdaptationEvent sessionEvent, AdaptationDecision decision, AdaptationAuditRecord auditRecord)
         {
             if (_auditWriter == null)
             {
@@ -78,6 +86,8 @@ namespace AdaptationUnity.Logging
 
             var line = new StringBuilder(512);
             line.Append("{\"session_id\":\"").Append(Escape(sessionId)).Append("\",");
+            line.Append("\"session_index\":").Append(sessionIndex).Append(",");
+            line.Append("\"warmup\":").Append(warmup ? "true" : "false").Append(",");
             line.Append("\"timestamp_utc\":\"").Append(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)).Append("\",");
             line.Append("\"inputs\":").Append(JsonForEvent(sessionEvent)).Append(",");
             line.Append("\"config_version_hash\":\"").Append(Escape(auditRecord?.config_version_hash)).Append("\",");
@@ -94,7 +104,49 @@ namespace AdaptationUnity.Logging
             _adapterWriter?.Dispose();
             _sceneWriter?.Dispose();
             _serviceErrorWriter?.Dispose();
+            _b2BreakdownWriter?.Dispose();
             _auditWriter?.Dispose();
+        }
+
+        public void LogB2Breakdown(
+            int sessionIndex,
+            bool warmup,
+            string correlationId,
+            double serializeMs,
+            double httpMs,
+            double serverMs,
+            double deserializeMs,
+            double totalMs,
+            int retriesCount,
+            bool timeout,
+            int httpStatus,
+            string errorCode)
+        {
+            if (_b2BreakdownWriter == null)
+            {
+                return;
+            }
+
+            lock (_b2BreakdownLock)
+            {
+                _b2BreakdownWriter.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0},{1},{2},\"{3}\",{4:0.000},{5:0.000},{6:0.000},{7:0.000},{8:0.000},{9},{10},{11},\"{12}\"",
+                    Escape(_trialId),
+                    sessionIndex,
+                    warmup ? 1 : 0,
+                    Escape(correlationId),
+                    serializeMs,
+                    httpMs,
+                    serverMs,
+                    deserializeMs,
+                    totalMs,
+                    retriesCount,
+                    timeout ? 1 : 0,
+                    httpStatus,
+                    Escape(errorCode)
+                ));
+            }
         }
 
         private static StreamWriter CreateWriter(string path, string header)
