@@ -10,7 +10,7 @@ namespace AdaptationCore
         public string scene_id;
         public float result_z;
         public float time_t;
-        public int? attempts_a;
+        public int attempts_a;
         public int seed;
         public string config_version;
     }
