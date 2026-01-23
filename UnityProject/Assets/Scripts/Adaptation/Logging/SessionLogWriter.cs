@@ -57,7 +57,7 @@ namespace AdaptationUnity.Logging
             _sceneWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3:0.000}", sessionId, fromScene, toScene, durationMs));
         }
 
-        public void LogAudit(string sessionId, AdaptationEvent sessionEvent, AdaptationDecision decision)
+        public void LogAudit(string sessionId, AdaptationEvent sessionEvent, AdaptationDecision decision, AdaptationAuditRecord auditRecord)
         {
             if (_auditWriter == null)
             {
@@ -67,8 +67,11 @@ namespace AdaptationUnity.Logging
             var line = new StringBuilder(512);
             line.Append("{\"session_id\":\"").Append(Escape(sessionId)).Append("\",");
             line.Append("\"timestamp_utc\":\"").Append(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)).Append("\",");
-            line.Append("\"event\":").Append(JsonForEvent(sessionEvent)).Append(",");
-            line.Append("\"decision\":").Append(JsonForDecision(decision)).Append("}");
+            line.Append("\"inputs\":").Append(JsonForEvent(sessionEvent)).Append(",");
+            line.Append("\"config_version_hash\":\"").Append(Escape(auditRecord?.config_version_hash)).Append("\",");
+            line.Append("\"seed\":").Append((auditRecord?.seed ?? sessionEvent.seed).ToString(CultureInfo.InvariantCulture)).Append(",");
+            line.Append("\"intermediate\":").Append(JsonForIntermediate(auditRecord)).Append(",");
+            line.Append("\"output\":").Append(JsonForDecision(decision)).Append("}");
 
             _auditWriter.WriteLine(line.ToString());
         }
@@ -162,6 +165,30 @@ namespace AdaptationUnity.Logging
             builder.Append("\"config_version\":\"").Append(Escape(decision.config_version)).Append("\"");
             builder.Append("}");
 
+            return builder.ToString();
+        }
+
+        private static string JsonForIntermediate(AdaptationAuditRecord auditRecord)
+        {
+            if (auditRecord == null || auditRecord.intermediates == null || auditRecord.intermediates.Count == 0)
+            {
+                return "{}";
+            }
+
+            var builder = new StringBuilder(128);
+            builder.Append("{");
+            var first = true;
+            foreach (var kvp in auditRecord.intermediates)
+            {
+                if (!first)
+                {
+                    builder.Append(",");
+                }
+                first = false;
+                builder.Append("\"").Append(Escape(kvp.Key)).Append("\":");
+                builder.Append(kvp.Value.ToString("0.000", CultureInfo.InvariantCulture));
+            }
+            builder.Append("}");
             return builder.ToString();
         }
 

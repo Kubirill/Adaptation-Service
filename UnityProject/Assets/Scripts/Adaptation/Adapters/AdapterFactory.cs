@@ -16,7 +16,7 @@ namespace AdaptationUnity.Adapters
             {
                 case "B1":
                 case "INPROCESS":
-                    return new B1InProcessAdapter();
+                    return new EngineAdapterB1();
                 case "B2":
                 case "JSON":
                     return new B2JsonRoundTripAdapter();

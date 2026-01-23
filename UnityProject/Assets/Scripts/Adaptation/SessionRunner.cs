@@ -106,10 +106,18 @@ namespace AdaptationUnity
             }
 
             AdaptationDecision decision;
+            AdaptationAuditRecord auditRecord = null;
             var adapterTimer = Stopwatch.StartNew();
             using (AdapterCallMarker.Auto())
             {
-                decision = _adapter.ComputeNext(sessionEvent);
+                if (_adapter is IAdaptationAdapterWithAudit adapterWithAudit)
+                {
+                    decision = adapterWithAudit.ComputeNext(sessionEvent, out auditRecord);
+                }
+                else
+                {
+                    decision = _adapter.ComputeNext(sessionEvent);
+                }
             }
             adapterTimer.Stop();
             _logWriter.LogAdapterCall(_currentSessionId, _adapter.AdapterName, adapterTimer.Elapsed.TotalMilliseconds);
@@ -120,7 +128,7 @@ namespace AdaptationUnity
                 _npcController.ApplyParams(decision.npc_params);
             }
 
-            _logWriter.LogAudit(_currentSessionId, sessionEvent, decision);
+            _logWriter.LogAudit(_currentSessionId, sessionEvent, decision, auditRecord);
 
             var nextScene = ResolveNextScene(decision.next_scene_id);
             var transitionTimer = Stopwatch.StartNew();

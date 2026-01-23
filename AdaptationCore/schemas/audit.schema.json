@@ -4,15 +4,24 @@
   "type": "object",
   "required": [
     "session_id",
-    "event",
-    "decision",
+    "inputs",
+    "output",
+    "config_version_hash",
+    "seed",
+    "intermediate",
     "timestamp_utc"
   ],
   "properties": {
     "session_id": { "type": "string" },
     "timestamp_utc": { "type": "string" },
-    "event": { "$ref": "event.schema.json" },
-    "decision": { "$ref": "decision.schema.json" }
+    "inputs": { "$ref": "event.schema.json" },
+    "output": { "$ref": "decision.schema.json" },
+    "config_version_hash": { "type": "string" },
+    "seed": { "type": "integer" },
+    "intermediate": {
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    }
   },
   "additionalProperties": false
 }
