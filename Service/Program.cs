@@ -73,7 +73,7 @@ internal sealed class ServiceSettings
     public string ConfigRoot { get; set; } = string.Empty;
     public string ConfigVersion { get; set; } = "v1";
     public string AuditRoot { get; set; } = string.Empty;
-    public string Urls { get; set; } = "http://localhost:5000";
+    public string Urls { get; set; } = "http://0.0.0.0:5000";
 
     public static ServiceSettings Load(IConfiguration config)
     {
@@ -82,7 +82,7 @@ internal sealed class ServiceSettings
             ConfigRoot = config["ConfigRoot"] ?? config["configRoot"] ?? string.Empty,
             ConfigVersion = config["ConfigVersion"] ?? config["configVersion"] ?? "v1",
             AuditRoot = config["AuditRoot"] ?? config["auditRoot"] ?? string.Empty,
-            Urls = config["urls"] ?? config["Urls"] ?? "http://localhost:5000"
+            Urls = config["urls"] ?? config["Urls"] ?? "http://0.0.0.0:5000"
         };
     }
 }
