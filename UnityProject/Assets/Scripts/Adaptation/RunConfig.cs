@@ -19,6 +19,7 @@ namespace AdaptationUnity
         public int Attempts = 1;
         public List<string> SceneSequence = new List<string>();
         public string ServiceUrl = "http://localhost:5000";
+        public string ServiceGrpcUrl = "http://127.0.0.1:6002";
         public int ServiceTimeoutMs = 3000;
         public int ServiceRetries = 2;
         public int ServiceRetryDelayMs = 250;
@@ -73,6 +74,10 @@ namespace AdaptationUnity
                 else if (arg.Equals("-serviceUrl", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {
                     cfg.ServiceUrl = args[++i];
+                }
+                else if (arg.Equals("-serviceGrpcUrl", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    cfg.ServiceGrpcUrl = args[++i];
                 }
                 else if (arg.Equals("-serviceTimeoutMs", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
                 {

@@ -14,7 +14,9 @@ namespace AdaptationUnity.Logging
         private StreamWriter _auditWriter;
         private StreamWriter _serviceErrorWriter;
         private StreamWriter _b2BreakdownWriter;
+        private StreamWriter _r3GrpcBreakdownWriter;
         private readonly object _b2BreakdownLock = new object();
+        private readonly object _r3GrpcBreakdownLock = new object();
         private string _trialId = string.Empty;
 
         public void Initialize(string outputDir)
@@ -29,6 +31,10 @@ namespace AdaptationUnity.Logging
             _b2BreakdownWriter = CreateWriter(
                 Path.Combine(outputDir, "b2_breakdown.csv"),
                 "trial_id,session_index,warmup,correlation_id,t_client_serialize_ms,t_http_rtt_ms,t_server_compute_ms,t_client_deserialize_ms,t_total_client_ms,retries_count,timeout_flag,http_status,error_code"
+            );
+            _r3GrpcBreakdownWriter = CreateWriter(
+                Path.Combine(outputDir, "r3_grpc_breakdown.csv"),
+                "trial_id,session_index,warmup,correlation_id,t_client_serialize_ms,t_grpc_rtt_ms,t_server_compute_ms,t_client_deserialize_ms,t_total_client_ms,retries_count,timeout_flag,grpc_status,error_code"
             );
             _auditWriter = new StreamWriter(Path.Combine(outputDir, "audit.jsonl"), false, Encoding.UTF8)
             {
@@ -105,6 +111,7 @@ namespace AdaptationUnity.Logging
             _sceneWriter?.Dispose();
             _serviceErrorWriter?.Dispose();
             _b2BreakdownWriter?.Dispose();
+            _r3GrpcBreakdownWriter?.Dispose();
             _auditWriter?.Dispose();
         }
 
@@ -144,6 +151,47 @@ namespace AdaptationUnity.Logging
                     retriesCount,
                     timeout ? 1 : 0,
                     httpStatus,
+                    Escape(errorCode)
+                ));
+            }
+        }
+
+        public void LogR3GrpcBreakdown(
+            int sessionIndex,
+            bool warmup,
+            string correlationId,
+            double serializeMs,
+            double grpcMs,
+            double serverMs,
+            double deserializeMs,
+            double totalMs,
+            int retriesCount,
+            bool timeout,
+            string grpcStatus,
+            string errorCode)
+        {
+            if (_r3GrpcBreakdownWriter == null)
+            {
+                return;
+            }
+
+            lock (_r3GrpcBreakdownLock)
+            {
+                _r3GrpcBreakdownWriter.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0},{1},{2},\"{3}\",{4:0.000},{5:0.000},{6:0.000},{7:0.000},{8:0.000},{9},{10},\"{11}\",\"{12}\"",
+                    Escape(_trialId),
+                    sessionIndex,
+                    warmup ? 1 : 0,
+                    Escape(correlationId),
+                    serializeMs,
+                    grpcMs,
+                    serverMs,
+                    deserializeMs,
+                    totalMs,
+                    retriesCount,
+                    timeout ? 1 : 0,
+                    Escape(grpcStatus),
                     Escape(errorCode)
                 ));
             }

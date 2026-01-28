@@ -20,6 +20,9 @@ namespace AdaptationUnity.Adapters
                 case "B2":
                 case "JSON":
                     return AttachLogger(new EngineAdapterB2(), logWriter);
+                case "R3":
+                case "R3_REMOTE_GRPC":
+                    return AttachLogger(new EngineAdapterR3Grpc(), logWriter);
                 case "B3":
                 case "FILE":
                     return AttachLogger(new B3FileRoundTripAdapter(), logWriter);

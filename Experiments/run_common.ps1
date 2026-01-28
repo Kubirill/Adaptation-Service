@@ -1,11 +1,13 @@
 param(
     [Parameter(Mandatory = $true)][string]$Arch,
+    [string]$AdapterName = "",
     [int]$Trials = 3,
     [int]$Sessions = 10,
     [int]$WarmupSessions = 5,
     [int]$Seed = 1234,
     [string]$UnityPath = $env:UNITY_PATH,
     [string]$ServiceUrl = "",
+    [string]$ServiceGrpcUrl = "",
     [int]$ServiceTimeoutMs = 3000,
     [int]$ServiceRetries = 2,
     [int]$ServiceRetryDelayMs = 250,
@@ -47,12 +49,17 @@ for ($i = 0; $i -lt $Trials; $i++) {
     $trialDir = Join-Path $outRoot ("trial_{0:d4}" -f $i)
     New-Item -ItemType Directory -Force -Path $trialDir | Out-Null
 
+    $adapterValue = $Arch
+    if ($AdapterName) {
+        $adapterValue = $AdapterName
+    }
+
     $args = @(
         "-batchmode",
         "-nographics",
         "-projectPath", $projectPath,
         "-executeMethod", "AdaptationUnity.Editor.BatchModeRunner.Run",
-        "-adapter", $Arch,
+        "-adapter", $adapterValue,
         "-sessions", $Sessions,
         "-warmupSessions", $WarmupSessions,
         "-seed", ($Seed + $i),
@@ -60,12 +67,17 @@ for ($i = 0; $i -lt $Trials; $i++) {
     )
     if ($ServiceUrl) {
         $args += @("-serviceUrl", $ServiceUrl)
-        $args += @("-serviceTimeoutMs", $ServiceTimeoutMs)
-        $args += @("-serviceRetries", $ServiceRetries)
-        $args += @("-serviceRetryDelayMs", $ServiceRetryDelayMs)
         if ($ProfileId) {
             $args += @("-profileId", $ProfileId)
         }
+    }
+    if ($ServiceGrpcUrl) {
+        $args += @("-serviceGrpcUrl", $ServiceGrpcUrl)
+    }
+    if ($ServiceUrl -or $ServiceGrpcUrl) {
+        $args += @("-serviceTimeoutMs", $ServiceTimeoutMs)
+        $args += @("-serviceRetries", $ServiceRetries)
+        $args += @("-serviceRetryDelayMs", $ServiceRetryDelayMs)
     }
 
     Write-Host "Trial $i -> $trialDir"

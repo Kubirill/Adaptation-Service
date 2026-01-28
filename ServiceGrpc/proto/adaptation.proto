@@ -1,0 +1,40 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "AdaptationGrpc";
+package adaptation;
+
+message SessionResult {
+  string session_id = 1;
+  string scene_id = 2;
+  float result_z = 3;
+  float time_t = 4;
+  int32 attempts = 5;
+  int32 seed = 6;
+  string config_version = 7;
+  string correlation_id = 8;
+}
+
+message NpcParam {
+  string name = 1;
+  float value = 2;
+}
+
+message ExplanationEntry {
+  string name = 1;
+  string value = 2;
+}
+
+message AdaptationDecision {
+  string next_scene_id = 1;
+  string npc_params_json = 2;
+  string explanation_json = 3;
+  int32 seed = 4;
+  string config_version = 5;
+  string correlation_id = 6;
+  repeated NpcParam npc_params = 10;
+  repeated ExplanationEntry explanation = 11;
+}
+
+service Adaptation {
+  rpc ComputeNext(SessionResult) returns (AdaptationDecision);
+}

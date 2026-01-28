@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.63.0" />
+    <PackageReference Include="Grpc.AspNetCore.Web" Version="2.63.0" />
+    <PackageReference Include="Grpc.Net.Client.Web" Version="2.63.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.63.0" PrivateAssets="All" />
+    <PackageReference Include="Google.Protobuf" Version="3.25.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="proto\\adaptation.proto" GrpcServices="Both" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\AdaptationCore\\AdaptationCore.csproj" />
+  </ItemGroup>
+</Project>

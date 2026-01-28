@@ -22,6 +22,8 @@
 *.pidb
 *.booproj
 *.svd
+!ServiceGrpc/ServiceGrpc.csproj
+!Experiments/GrpcSmokeTest/GrpcSmokeTest.csproj
 
 # Crash Reports
 sysinfo.txt
