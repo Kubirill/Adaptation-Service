@@ -15,8 +15,10 @@ namespace AdaptationUnity.Logging
         private StreamWriter _serviceErrorWriter;
         private StreamWriter _b2BreakdownWriter;
         private StreamWriter _r3GrpcBreakdownWriter;
+        private StreamWriter _r4BrokerBreakdownWriter;
         private readonly object _b2BreakdownLock = new object();
         private readonly object _r3GrpcBreakdownLock = new object();
+        private readonly object _r4BrokerBreakdownLock = new object();
         private string _trialId = string.Empty;
 
         public void Initialize(string outputDir)
@@ -35,6 +37,10 @@ namespace AdaptationUnity.Logging
             _r3GrpcBreakdownWriter = CreateWriter(
                 Path.Combine(outputDir, "r3_grpc_breakdown.csv"),
                 "trial_id,session_index,warmup,correlation_id,t_client_serialize_ms,t_grpc_rtt_ms,t_server_compute_ms,t_client_deserialize_ms,t_total_client_ms,retries_count,timeout_flag,grpc_status,error_code"
+            );
+            _r4BrokerBreakdownWriter = CreateWriter(
+                Path.Combine(outputDir, "r4_broker_breakdown.csv"),
+                "serialize_ms,broker_roundtrip_ms,server_compute_ms,deserialize_ms,total_ms,retries_count,timeout_flag,status"
             );
             _auditWriter = new StreamWriter(Path.Combine(outputDir, "audit.jsonl"), false, Encoding.UTF8)
             {
@@ -112,6 +118,7 @@ namespace AdaptationUnity.Logging
             _serviceErrorWriter?.Dispose();
             _b2BreakdownWriter?.Dispose();
             _r3GrpcBreakdownWriter?.Dispose();
+            _r4BrokerBreakdownWriter?.Dispose();
             _auditWriter?.Dispose();
         }
 
@@ -193,6 +200,38 @@ namespace AdaptationUnity.Logging
                     timeout ? 1 : 0,
                     Escape(grpcStatus),
                     Escape(errorCode)
+                ));
+            }
+        }
+
+        public void LogR4BrokerBreakdown(
+            double serializeMs,
+            double brokerMs,
+            double serverMs,
+            double deserializeMs,
+            double totalMs,
+            int retriesCount,
+            bool timeout,
+            string status)
+        {
+            if (_r4BrokerBreakdownWriter == null)
+            {
+                return;
+            }
+
+            lock (_r4BrokerBreakdownLock)
+            {
+                _r4BrokerBreakdownWriter.WriteLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{5},{6},\"{7}\"",
+                    serializeMs,
+                    brokerMs,
+                    serverMs,
+                    deserializeMs,
+                    totalMs,
+                    retriesCount,
+                    timeout ? 1 : 0,
+                    Escape(status)
                 ));
             }
         }

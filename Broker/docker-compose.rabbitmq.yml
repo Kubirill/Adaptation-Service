@@ -1,0 +1,11 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: adaptation_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${BROKER_USER:-adaptation}
+      RABBITMQ_DEFAULT_PASS: ${BROKER_PASS:-adaptation}
+    ports:
+      - "5672:5672"
+      - "15672:15672"

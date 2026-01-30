@@ -24,6 +24,11 @@ namespace AdaptationUnity
         public int ServiceRetries = 2;
         public int ServiceRetryDelayMs = 250;
         public string ProfileId = string.Empty;
+        public string BrokerHost = GetEnv("BROKER_HOST", "127.0.0.1");
+        public int BrokerPort = GetEnvInt("BROKER_PORT", 5672);
+        public string BrokerUser = GetEnv("BROKER_USER", "adaptation");
+        public string BrokerPass = GetEnv("BROKER_PASS", "adaptation");
+        public int BrokerTimeoutMs = GetEnvInt("BROKER_TIMEOUT_MS", 2000);
 
         public static void ApplyFromArgs(string[] args)
         {
@@ -112,6 +117,26 @@ namespace AdaptationUnity
         private static float ParseFloat(string value, float fallback)
         {
             if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed;
+            }
+            return fallback;
+        }
+
+        private static string GetEnv(string key, string fallback)
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return fallback;
+            }
+            return value;
+        }
+
+        private static int GetEnvInt(string key, int fallback)
+        {
+            var value = Environment.GetEnvironmentVariable(key);
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
             {
                 return parsed;
             }

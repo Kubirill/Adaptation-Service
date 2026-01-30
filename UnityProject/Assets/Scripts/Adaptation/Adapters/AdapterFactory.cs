@@ -23,6 +23,9 @@ namespace AdaptationUnity.Adapters
                 case "R3":
                 case "R3_REMOTE_GRPC":
                     return AttachLogger(new EngineAdapterR3Grpc(), logWriter);
+                case "R4":
+                case "R4_REMOTE_BROKERRPC":
+                    return AttachLogger(new EngineAdapterR4BrokerRemote(), logWriter);
                 case "B3":
                 case "FILE":
                     return AttachLogger(new B3FileRoundTripAdapter(), logWriter);
