@@ -4,8 +4,8 @@ param(
     [int]$WarmupSessions = 5,
     [int]$Seed = 1234,
     [string]$UnityPath = $env:UNITY_PATH,
-    [string]$BrokerHost = "",
-    [int]$BrokerPort = 5672,
+    [string]${BrokerHost} = "",
+    [int]${BrokerPort} = 5672,
     [switch]$SkipCheck
 )
 
@@ -33,23 +33,23 @@ function Test-TcpPort {
     }
 }
 
-if (-not $BrokerHost) {
-    $BrokerHost = $env:BROKER_HOST
+if (-not ${BrokerHost}) {
+    ${BrokerHost} = $env:BROKER_HOST
 }
-if (-not $BrokerHost) {
+if (-not ${BrokerHost}) {
     throw "BROKER_HOST is required (set env var or pass -BrokerHost)."
 }
 
-Write-Host "Checking broker connectivity at $BrokerHost:$BrokerPort..."
-if (-not (Test-TcpPort -HostName $BrokerHost -Port $BrokerPort -TimeoutMs 1000)) {
-    throw "Cannot connect to broker at $BrokerHost:$BrokerPort"
+Write-Host "Checking broker connectivity at ${BrokerHost}:${BrokerPort}..."
+if (-not (Test-TcpPort -HostName ${BrokerHost} -Port ${BrokerPort} -TimeoutMs 1000)) {
+    throw "Cannot connect to broker at ${BrokerHost}:${BrokerPort}"
 }
 
-$env:BROKER_HOST = $BrokerHost
-$env:BROKER_PORT = $BrokerPort
+$env:BROKER_HOST = ${BrokerHost}
+$env:BROKER_PORT = ${BrokerPort}
 
 if (-not $SkipCheck) {
-    & "$PSScriptRoot\check_R4_broker_client.ps1" -BrokerHost $BrokerHost -BrokerPort $BrokerPort
+    & "$PSScriptRoot\check_R4_broker_client.ps1" -BrokerHost ${BrokerHost} -BrokerPort ${BrokerPort}
 }
 
 & "$PSScriptRoot\run_common.ps1" -Arch "R4_broker_client" -AdapterName "R4_remote_BrokerRPC" -Trials $Trials -Sessions $Sessions -WarmupSessions $WarmupSessions -Seed $Seed -UnityPath $UnityPath | Out-Null
