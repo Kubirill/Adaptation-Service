@@ -81,8 +81,13 @@ for ($i = 0; $i -lt $Trials; $i++) {
     }
 
     Write-Host "Trial $i -> $trialDir"
-    & $unity @args | Tee-Object -FilePath (Join-Path $trialDir "unity.log")
+    $unityLog = Join-Path $trialDir "unity.log"
+    & $unity @args | Tee-Object -FilePath $unityLog
     if ($LASTEXITCODE -ne 0) {
+        if (Test-Path $unityLog) {
+            Write-Host "Unity log tail:"
+            Get-Content -Path $unityLog -Tail 50 | ForEach-Object { Write-Host $_ }
+        }
         throw "Unity exited with code $LASTEXITCODE"
     }
 }
