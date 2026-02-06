@@ -1,18 +1,26 @@
 using System.Globalization;
+using System.Diagnostics;
+using Unity.Profiling;
 using AdaptationCore;
 
 namespace AdaptationUnity.Adapters
 {
     public static class AdapterDecisions
     {
+        private static readonly ProfilerMarker DecisionBuildMarker = new ProfilerMarker("Adapter.DecisionBuild");
         public static AdaptationDecision BuildDecision(AdaptationEvent sessionEvent, string adapterName, string rationale)
         {
-            var decision = new AdaptationDecision
+            using (DecisionBuildMarker.Auto())
             {
-                next_scene_id = sessionEvent.scene_id,
-                seed = sessionEvent.seed,
-                config_version = sessionEvent.config_version
-            };
+                var stopwatch = Stopwatch.StartNew();
+                try
+                {
+                    var decision = new AdaptationDecision
+                    {
+                        next_scene_id = sessionEvent.scene_id,
+                        seed = sessionEvent.seed,
+                        config_version = sessionEvent.config_version
+                    };
 
             decision.npc_params.Add(new NpcParam
             {
@@ -47,6 +55,13 @@ namespace AdaptationUnity.Adapters
             });
 
             return decision;
+                }
+                finally
+                {
+                    stopwatch.Stop();
+                    DecisionBuildTiming.Report(stopwatch.Elapsed.TotalMilliseconds);
+                }
+            }
         }
 
         private static float Clamp01(float value)

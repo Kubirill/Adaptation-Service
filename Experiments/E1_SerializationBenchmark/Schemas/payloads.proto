@@ -1,0 +1,50 @@
+syntax = "proto3";
+package adaptation.experiments;
+
+message NpcFeature {
+  string name = 1;
+  float agility = 2;
+  float strength = 3;
+  int32 alertness = 4;
+  bool isHostile = 5;
+  string classification = 6;
+  float stamina = 7;
+  int32 level = 8;
+  bool canUseMagic = 9;
+  string role = 10;
+  float speed = 11;
+  int32 experience = 12;
+  bool isBoss = 13;
+  string faction = 14;
+  float luck = 15;
+}
+
+message NpcParam {
+  string name = 1;
+  float value = 2;
+}
+
+message ExplanationEntry {
+  string key = 1;
+  string value = 2;
+}
+
+message EventPayload {
+  string sessionId = 1;
+  string sceneId = 2;
+  float resultZ = 3;
+  float timeT = 4;
+  int32 attempts = 5;
+  int32 seed = 6;
+  string configVersion = 7;
+  repeated NpcFeature npcFeatures = 8;
+  repeated NpcParam npcParams = 9;
+}
+
+message DecisionPayload {
+  string nextSceneId = 1;
+  repeated NpcParam npcParams = 2;
+  repeated ExplanationEntry explanation = 3;
+  int32 seed = 4;
+  string configVersion = 5;
+}

@@ -12,7 +12,7 @@ using Grpc.Net.Client.Web;
 
 namespace AdaptationUnity.Adapters
 {
-    public sealed class GrpcClient
+    public sealed class GrpcClient : IAdapterTiming
     {
         private static readonly object ChannelLock = new object();
         private static GrpcChannel SharedChannel;
@@ -24,6 +24,10 @@ namespace AdaptationUnity.Adapters
         private string _sessionId = string.Empty;
         private int _sessionIndex;
         private bool _warmup;
+        private double _lastNetMs;
+        private double _lastLocalMs;
+        private double _lastDecisionMs;
+        private bool _hasTiming;
 
         public GrpcClient(RunConfig config)
         {
@@ -89,10 +93,18 @@ namespace AdaptationUnity.Adapters
                     }
 
                     var deserializeTimer = Stopwatch.StartNew();
-                    var decision = BuildDecision(response, sessionEvent);
+                    AdaptationDecision decision;
+                    using (DecisionBuildTiming.Begin(ms => _lastDecisionMs = ms))
+                    {
+                        decision = BuildDecision(response, sessionEvent);
+                    }
                     deserializeTimer.Stop();
                     deserializeMs = deserializeTimer.Elapsed.TotalMilliseconds;
+                    var auditTimer = Stopwatch.StartNew();
                     auditRecord = BuildAudit(sessionEvent, decision, trailers);
+                    auditTimer.Stop();
+                    var localMs = serializeTimer.Elapsed.TotalMilliseconds + deserializeMs + auditTimer.Elapsed.TotalMilliseconds;
+                    StoreTiming(grpcMs, localMs, _lastDecisionMs);
 
                     retriesCount = attempt - 1;
                     totalTimer.Stop();
@@ -474,6 +486,31 @@ namespace AdaptationUnity.Adapters
                 }
             }
             return map;
+        }
+
+        private void StoreTiming(double netMs, double localMs, double decisionMs)
+        {
+            _lastNetMs = netMs;
+            _lastLocalMs = localMs;
+            _lastDecisionMs = decisionMs;
+            _hasTiming = true;
+        }
+
+        public bool TryGetLastTiming(out double netMs, out double localMs, out double decisionMs)
+        {
+            if (_hasTiming)
+            {
+                netMs = _lastNetMs;
+                localMs = _lastLocalMs;
+                decisionMs = _lastDecisionMs;
+                _hasTiming = false;
+                return true;
+            }
+
+            netMs = 0;
+            localMs = 0;
+            decisionMs = 0;
+            return false;
         }
     }
 }

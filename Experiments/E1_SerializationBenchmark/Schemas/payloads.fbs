@@ -1,0 +1,51 @@
+namespace Adaptation.Experiments.Flatbuffers;
+
+table NpcFeature {
+  name:string;
+  agility:float;
+  strength:float;
+  alertness:int;
+  isHostile:bool;
+  classification:string;
+  stamina:float;
+  level:int;
+  canUseMagic:bool;
+  role:string;
+  speed:float;
+  experience:int;
+  isBoss:bool;
+  faction:string;
+  luck:float;
+}
+
+table NpcParam {
+  name:string;
+  value:float;
+}
+
+table ExplanationEntry {
+  key:string;
+  value:string;
+}
+
+table EventPayload {
+  sessionId:string;
+  sceneId:string;
+  resultZ:float;
+  timeT:float;
+  attempts:int;
+  seed:int;
+  configVersion:string;
+  npcFeatures:[NpcFeature];
+  npcParams:[NpcParam];
+}
+
+table DecisionPayload {
+  nextSceneId:string;
+  npcParams:[NpcParam];
+  explanation:[ExplanationEntry];
+  seed:int;
+  configVersion:string;
+}
+
+root_type EventPayload;

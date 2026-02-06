@@ -128,7 +128,24 @@ namespace AdaptationUnity
                 }
             }
             adapterTimer.Stop();
-            _logWriter.LogAdapterCall(_currentSessionId, index, _isWarmup, _adapter.AdapterName, adapterTimer.Elapsed.TotalMilliseconds);
+            double netMs = 0;
+            double localMs = 0;
+            double decisionMs = 0;
+            if (_adapter is IAdapterTiming timing && timing.TryGetLastTiming(out var recordedNetMs, out var recordedLocalMs, out var recordedDecisionMs))
+            {
+                netMs = recordedNetMs;
+                localMs = recordedLocalMs;
+                decisionMs = recordedDecisionMs;
+            }
+            _logWriter.LogAdapterCall(
+                _currentSessionId,
+                index,
+                _isWarmup,
+                _adapter.AdapterName,
+                adapterTimer.Elapsed.TotalMilliseconds,
+                netMs,
+                localMs,
+                decisionMs);
 
             using (ApplyDecisionMarker.Auto())
             {

@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace AdaptationUnity.Adapters
 {
-    public sealed class ServiceClient
+    public sealed class ServiceClient : IAdapterTiming
     {
         private static readonly HttpClient SharedClient = CreateSharedClient();
         private readonly HttpClient _httpClient;
@@ -19,6 +19,10 @@ namespace AdaptationUnity.Adapters
         private string _sessionId = string.Empty;
         private int _sessionIndex;
         private bool _warmup;
+        private double _lastNetMs;
+        private double _lastLocalMs;
+        private double _lastDecisionMs;
+        private bool _hasTiming;
 
         public ServiceClient(RunConfig config)
         {
@@ -86,7 +90,11 @@ namespace AdaptationUnity.Adapters
                     var decision = JsonUtility.FromJson<AdaptationDecision>(body);
                     deserializeTimer.Stop();
                     deserializeMs = deserializeTimer.Elapsed.TotalMilliseconds;
+                    var auditTimer = Stopwatch.StartNew();
                     auditRecord = BuildAudit(sessionEvent, response);
+                    auditTimer.Stop();
+                    var localMs = serializeTimer.Elapsed.TotalMilliseconds + deserializeMs + auditTimer.Elapsed.TotalMilliseconds;
+                    StoreTiming(httpMs, localMs, _lastDecisionMs);
 
                     retriesCount = attempt - 1;
                     totalTimer.Stop();
@@ -145,6 +153,31 @@ namespace AdaptationUnity.Adapters
                 errorCode
             );
             throw lastError ?? new Exception("Service call failed.");
+        }
+
+        private void StoreTiming(double netMs, double localMs, double decisionMs)
+        {
+            _lastNetMs = netMs;
+            _lastLocalMs = localMs;
+            _lastDecisionMs = decisionMs;
+            _hasTiming = true;
+        }
+
+        public bool TryGetLastTiming(out double netMs, out double localMs, out double decisionMs)
+        {
+            if (_hasTiming)
+            {
+                netMs = _lastNetMs;
+                localMs = _lastLocalMs;
+                decisionMs = _lastDecisionMs;
+                _hasTiming = false;
+                return true;
+            }
+
+            netMs = 0;
+            localMs = 0;
+            decisionMs = 0;
+            return false;
         }
 
         private static string BuildPayload(AdaptationEvent sessionEvent, string profileId)

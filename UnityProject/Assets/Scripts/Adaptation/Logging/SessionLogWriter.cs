@@ -27,7 +27,7 @@ namespace AdaptationUnity.Logging
 
             _trialId = new DirectoryInfo(outputDir).Name;
             _frameWriter = CreateWriter(Path.Combine(outputDir, "frame_times.csv"), "session_id,session_index,frame_index,warmup,delta_ms");
-            _adapterWriter = CreateWriter(Path.Combine(outputDir, "adapter_calls.csv"), "session_id,session_index,warmup,adapter,call_ms");
+            _adapterWriter = CreateWriter(Path.Combine(outputDir, "adapter_calls.csv"), "session_id,session_index,warmup,adapter,call_ms,net_ms,local_ms,decision_build_ms");
             _sceneWriter = CreateWriter(Path.Combine(outputDir, "scene_transitions.csv"), "session_id,session_index,warmup,from_scene,to_scene,transition_ms");
             _serviceErrorWriter = CreateWriter(Path.Combine(outputDir, "service_errors.csv"), "session_id,session_index,warmup,attempt,error,call_ms");
             _b2BreakdownWriter = CreateWriter(
@@ -59,14 +59,14 @@ namespace AdaptationUnity.Logging
             _frameWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4:0.000}", sessionId, sessionIndex, frameIndex, warmup ? 1 : 0, deltaMs));
         }
 
-        public void LogAdapterCall(string sessionId, int sessionIndex, bool warmup, string adapterName, double durationMs)
+        public void LogAdapterCall(string sessionId, int sessionIndex, bool warmup, string adapterName, double durationMs, double netMs, double localMs, double decisionMs)
         {
             if (_adapterWriter == null)
             {
                 return;
             }
 
-            _adapterWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4:0.000}", sessionId, sessionIndex, warmup ? 1 : 0, adapterName, durationMs));
+            _adapterWriter.WriteLine(string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4:0.000},{5:0.000},{6:0.000},{7:0.000}", sessionId, sessionIndex, warmup ? 1 : 0, adapterName, durationMs, netMs, localMs, decisionMs));
         }
 
         public void LogSceneTransition(string sessionId, int sessionIndex, bool warmup, string fromScene, string toScene, double durationMs)

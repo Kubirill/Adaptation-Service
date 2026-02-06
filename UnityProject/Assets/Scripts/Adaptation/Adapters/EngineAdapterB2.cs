@@ -3,7 +3,7 @@ using AdaptationUnity.Logging;
 
 namespace AdaptationUnity.Adapters
 {
-    public sealed class EngineAdapterB2 : IAdaptationAdapterWithAudit, IAdapterWithLogger, IAdapterSessionContext
+    public sealed class EngineAdapterB2 : IAdaptationAdapterWithAudit, IAdapterWithLogger, IAdapterSessionContext, IAdapterTiming
     {
         public string AdapterName => "B2";
 
@@ -32,6 +32,19 @@ namespace AdaptationUnity.Adapters
         public void SetSessionContext(string sessionId, int sessionIndex, bool warmup)
         {
             _client.SetSessionContext(sessionId, sessionIndex, warmup);
+        }
+
+        public bool TryGetLastTiming(out double netMs, out double localMs, out double decisionMs)
+        {
+            if (_client is IAdapterTiming timing)
+            {
+                return timing.TryGetLastTiming(out netMs, out localMs, out decisionMs);
+            }
+
+            netMs = 0;
+            localMs = 0;
+            decisionMs = 0;
+            return false;
         }
     }
 }
